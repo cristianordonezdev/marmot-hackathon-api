@@ -27,6 +27,9 @@ def clone_and_read_files(repo_url):
     # Clone the repository
     subprocess.run(['git', 'clone', repo_url, repo_dir], check=True)
 
+    if not os.path.exists(repo_dir):
+        raise FileNotFoundError(f"El directorio {repo_dir} no existe. El clon del repositorio falló.")
+
     # Read the text of all files
     text_content = ""
     for root, dirs, files in os.walk(repo_dir):
@@ -73,22 +76,29 @@ repo_url = 'https://tfs-glo-lexisadvance.visualstudio.com/DefaultCollection/Radi
 text = clone_and_read_files(repo_url)
 #print(text)
 
-print(header + text + single_file_content)
+prompt = (header + text + single_file_content)
 
 try:
     from ollama import chat
     from ollama import ChatResponse
 
+    # Ensure the model is available
+    subprocess.run([r'C:\Users\ramonc\AppData\Local\Programs\Ollama\ollama.exe', 'pull', 'codellama:7b'], check=True)
+
     response: ChatResponse = chat(
         model='codellama:7b',
-        messages=[{'role': 'user', 'content': 'Why is the sky blue?'}]
+        messages=[{'role': 'user', 'content': prompt}]
     )
-
+    print("hello", response)
     print(response['message']['content'])
     print(response.message.content)
 except ModuleNotFoundError:
     print("The 'ollama' module is not installed. Please install it using 'pip install ollama'.")
 except httpx.ConnectError as e:
     print(f"Connection error: {e}")
+except subprocess.CalledProcessError as e:
+    print(f"An error occurred while pulling the model: {e}")
+except FileNotFoundError as e:
+    print(f"An error occurred: {e}")
 except Exception as e:
     print(f"An error occurred: {e}")
